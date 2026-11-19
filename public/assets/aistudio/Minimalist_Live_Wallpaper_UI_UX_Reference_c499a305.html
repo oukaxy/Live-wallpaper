@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Minimalist Live Wallpaper — UI/UX Reference Blueprint</title>
+  <style>
+    /* =========================================================================
+       DESIGN SYSTEM TOKENS — STRICT 60-30-10 COLOR FORMULA
+       Structural & Visual Blueprint for AI Coding Agent:
+       - 60% Dominant  : #F7F7F5 (Off-White Full-Bleed Viewport Background)
+       - 30% Secondary : #EAEAE6 (Light Gray Surfaces, Glass Controls & Cards)
+       - 10% Accent    : #2563EB (Cobalt Blue Strictly for Primary CTAs, Active Pills & Sliders)
+       - Ink Hierarchy : #18181B (Primary Ink), #71717A (Muted Secondary Labels)
+       ========================================================================= */
+    :root {
+      /* 60-30-10 Palette */
+      --bg-dominant: #F7F7F5;
+      --surface-secondary: #EAEAE6;
+      --surface-secondary-hover: #E2E2DD;
+      --surface-glass: rgba(234, 234, 230, 0.85);
+      --accent-cobalt: #2563EB;
+      --accent-cobalt-hover: #1D4ED8;
+      --accent-cobalt-tint: rgba(37, 99, 235, 0.10);
+
+      /* Typography Ink */
+      --ink-primary: #18181B;
+      --ink-muted: #71717A;
+      --ink-inverse: #FFFFFF;
+
+      /* Borders & Overlays */
+      --border-hairline: rgba(24, 24, 27, 0.08);
+      --border-glass: rgba(255, 255, 255, 0.75);
+      --scrim-overlay: rgba(24, 24, 27, 0.25);
+
+      /* System Inter / San Francisco Font Stack */
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+      /* Radii & Spacing Scale */
+      --radius-pill: 9999px;
+      --radius-sheet: 28px;
+      --radius-card: 18px;
+      --radius-card-sm: 14px;
+      --space-x: 20px;
+      --space-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+
+      /* Soft Realistic Elevation */
+      --shadow-cta: 0 10px 24px -6px rgba(37, 99, 235, 0.38);
+      --shadow-glass: 0 8px 20px -6px rgba(24, 24, 27, 0.10);
+      --shadow-sheet: 0 -12px 32px rgba(24, 24, 27, 0.08);
+    }
+
+    /* =========================================================================
+       BASE RESET & 100DVH FULL-BLEED VIEWPORT
+       ========================================================================= */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100vh;
+      height: 100dvh;
+      background-color: var(--bg-dominant);
+      color: var(--ink-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    button,
+    input {
+      font-family: inherit;
+      touch-action: manipulation;
+    }
+
+    /* Full-Bleed Dominant Canvas (#F7F7F5) */
+    .viewport-canvas {
+      position: relative;
+      width: 100%;
+      height: 100dvh;
+      background-color: var(--bg-dominant);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px var(--space-x);
+      overflow: hidden;
+    }
+
+    /* =========================================================================
+       MINIMAL CENTERED WIREFRAME VIEWPORT INDICATOR
+       ========================================================================= */
+    .viewport-wireframe {
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 22px 26px;
+      border-radius: var(--radius-card);
+      border: 1px dashed rgba(24, 24, 27, 0.14);
+      text-align: center;
+      transform: translateY(-24px);
+    }
+
+    .wireframe-icon {
+      color: var(--ink-muted);
+      opacity: 0.75;
+    }
+
+    .wireframe-title {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-muted);
+    }
+
+    /* Dynamic Viewport Status Pill */
+    .viewport-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: var(--radius-pill);
+      background-color: var(--surface-secondary);
+      color: var(--ink-muted);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      transition: background-color 0.22s ease, color 0.22s ease;
+    }
+
+    .viewport-status-pill.is-ready {
+      background-color: var(--accent-cobalt-tint);
+      color: var(--accent-cobalt);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: var(--radius-pill);
+      background-color: var(--ink-muted);
+      flex-shrink: 0;
+      transition: background-color 0.22s ease;
+    }
+
+    .viewport-status-pill.is-ready .status-dot {
+      background-color: var(--accent-cobalt);
+    }
+
+    /* =========================================================================
+       FLOATING TOAST NOTIFICATION ('Wallpaper diterapkan')
+       ========================================================================= */
+    .toast-pill {
+      position: fixed;
+      top: max(20px, env(safe-area-inset-top, 20px));
+      left: 50%;
+      transform: translate(-50%, -14px);
+      z-index: 40;
+      pointer-events: none;
+      opacity: 0;
+      padding: 9px 15px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      box-shadow: var(--shadow-glass);
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .toast-pill.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .toast-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      flex-shrink: 0;
+    }
+
+    .toast-label {
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+    }
+
+    /* =========================================================================
+       ONLY 2 FLOATING BOTTOM UI ELEMENTS
+       - 24px bottom safe margin, 20px side padding, 12px gap
+       - Left/Main : 52px height pill CTA 'Set Wallpaper' (#2563EB)
+       - Right     : 52px x 52px circular glassmorphic 'Pengaturan' (#EAEAE6)
+       ========================================================================= */
+    .floating-bottom-dock {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 12px var(--space-x) var(--space-bottom);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: opacity 0.2s ease, transform 0.24s ease;
+    }
+
+    .floating-bottom-dock.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+    }
+
+    /* Primary Pill CTA Button */
+    .btn-primary-pill {
+      flex: 1;
+      height: 52px;
+      border: none;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      color: var(--ink-inverse);
+      font-size: 14.5px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      box-shadow: var(--shadow-cta);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.16s ease, transform 0.14s ease;
+    }
+
+    .btn-primary-pill:hover {
+      background-color: var(--accent-cobalt-hover);
+    }
+
+    .btn-primary-pill:active {
+      transform: scale(0.985);
+    }
+
+    /* Circular Glassmorphic Settings Button (52px x 52px) */
+    .btn-settings-circle {
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      border-radius: var(--radius-pill);
+      background: var(--surface-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      color: var(--ink-primary);
+      box-shadow: var(--shadow-glass);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.16s ease, transform 0.14s ease;
+    }
+
+    .btn-settings-circle:hover {
+      background-color: var(--surface-secondary);
+    }
+
+    .btn-settings-circle:active {
+      transform: scale(0.96);
+    }
+
+    /* =========================================================================
+       BOTTOM SHEET OVERLAY & SHARED SHEET SHELL
+       ========================================================================= */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background-color: var(--scrim-overlay);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.24s ease;
+    }
+
+    .sheet-backdrop.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bottom-sheet {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 30;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      background-color: var(--bg-dominant);
+      border-top: 1px solid var(--border-glass);
+      padding: 12px var(--space-x) var(--space-bottom);
+      box-shadow: var(--shadow-sheet);
+      transform: translateY(104%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+    }
+
+    .bottom-sheet.open {
+      transform: translateY(0%);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .sheet-drag-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: var(--radius-pill);
+      background-color: rgba(24, 24, 27, 0.16);
+      margin: 0 auto 14px;
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .sheet-title {
+      font-size: 15.5px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: var(--ink-primary);
+    }
+
+    .btn-sheet-close {
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: var(--radius-pill);
+      background-color: var(--surface-secondary);
+      color: var(--ink-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.16s ease, color 0.16s ease;
+    }
+
+    .btn-sheet-close:hover {
+      background-color: var(--surface-secondary-hover);
+      color: var(--ink-primary);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* =========================================================================
+       BOTTOM SHEET 1: 'SET WALLPAPER' — PROGRESSIVE DISCLOSURE FLOW (NO PRESETS)
+       - State 1 (Initial)     : Only 'Pilih Video dari Galeri' card
+       - State 2 (Post-Setup)  : Selected video summary + 'Terapkan ke' pills + CTA
+       ========================================================================= */
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .flow-state-panel {
+      animation: fadeSlideIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* State 1: Primary Gallery Selection Card */
+    .gallery-picker-card {
+      width: 100%;
+      padding: 18px 16px;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      background-color: var(--surface-secondary);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 0.16s ease, transform 0.14s ease;
+    }
+
+    .gallery-picker-card:hover {
+      background-color: var(--surface-secondary-hover);
+    }
+
+    .gallery-picker-card:active {
+      transform: scale(0.99);
+    }
+
+    .gallery-icon-box {
+      width: 42px;
+      height: 42px;
+      border-radius: var(--radius-card-sm);
+      background-color: var(--bg-dominant);
+      color: var(--accent-cobalt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .gallery-text-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .gallery-primary-label {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+    }
+
+    .gallery-helper-caption {
+      font-size: 11.5px;
+      font-weight: 400;
+      letter-spacing: -0.005em;
+      color: var(--ink-muted);
+    }
+
+    /* State 2: Compact Selected-Video Summary Card */
+    .selected-video-card {
+      width: 100%;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      border-radius: var(--radius-card);
+      background-color: var(--surface-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .selected-video-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .video-thumb-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background-color: var(--bg-dominant);
+      color: var(--ink-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .video-filename {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-change-video {
+      border: none;
+      background: transparent;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--accent-cobalt);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-change-video:hover {
+      background-color: var(--accent-cobalt-tint);
+    }
+
+    /* Target Screen Section ('Terapkan ke') */
+    .target-section {
+      margin-bottom: 16px;
+    }
+
+    .section-micro-label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-muted);
+    }
+
+    /* 3 Horizontal Segmented Pill Options */
+    .segmented-pill-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .target-pill {
+      height: 38px;
+      border: none;
+      border-radius: var(--radius-pill);
+      background-color: var(--surface-secondary);
+      color: var(--ink-primary);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .target-pill:hover {
+      background-color: var(--surface-secondary-hover);
+    }
+
+    .target-pill.active {
+      background-color: var(--accent-cobalt);
+      color: var(--ink-inverse);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+
+    /* Full-Width Apply CTA ('Terapkan Wallpaper') */
+    .btn-apply-full {
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      color: var(--ink-inverse);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      box-shadow: var(--shadow-cta);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.16s ease, transform 0.14s ease;
+    }
+
+    .btn-apply-full:hover {
+      background-color: var(--accent-cobalt-hover);
+    }
+
+    .btn-apply-full:active {
+      transform: scale(0.985);
+    }
+
+    /* =========================================================================
+       BOTTOM SHEET 2: 'PENGATURAN' (STRICTLY 3 CONTROLS)
+       1. 'Volume Video' (0% - 100%, default 70%)
+       2. 'Kecerahan Video' (20% - 100%, default 100%)
+       3. 'Status Pemutaran' + 'Stop Video' / 'Putar Video' pill button
+       ========================================================================= */
+    .settings-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .setting-card {
+      border-radius: var(--radius-card);
+      background-color: var(--surface-secondary);
+      padding: 14px 16px;
+    }
+
+    .setting-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 11px;
+    }
+
+    .setting-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+    }
+
+    .setting-icon {
+      color: var(--ink-muted);
+      flex-shrink: 0;
+    }
+
+    .setting-value {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--accent-cobalt);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Custom Cobalt Blue (#2563EB) Range Slider */
+    input[type="range"].cobalt-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: var(--radius-pill);
+      background: #D4D4CE;
+      outline: none;
+      cursor: pointer;
+      display: block;
+    }
+
+    input[type="range"].cobalt-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.34);
+      cursor: pointer;
+      transition: transform 0.14s ease;
+    }
+
+    input[type="range"].cobalt-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.08);
+    }
+
+    input[type="range"].cobalt-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.34);
+      cursor: pointer;
+    }
+
+    /* Control 3: Playback Status Card Row */
+    .playback-card {
+      border-radius: var(--radius-card);
+      background-color: var(--surface-secondary);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .playback-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .playback-title {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+    }
+
+    .playback-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt-tint);
+      color: var(--accent-cobalt);
+      font-size: 11px;
+      font-weight: 500;
+      transition: background-color 0.18s ease, color 0.18s ease;
+    }
+
+    .playback-badge.is-stopped {
+      background-color: rgba(24, 24, 27, 0.06);
+      color: var(--ink-muted);
+    }
+
+    .playback-badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      transition: background-color 0.18s ease;
+    }
+
+    .playback-badge.is-stopped .playback-badge-dot {
+      background-color: var(--ink-muted);
+    }
+
+    .btn-playback-pill {
+      height: 36px;
+      padding: 0 16px;
+      border: none;
+      border-radius: var(--radius-pill);
+      background-color: var(--accent-cobalt);
+      color: var(--ink-inverse);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+    }
+
+    .btn-playback-pill:hover {
+      background-color: var(--accent-cobalt-hover);
+    }
+
+    .btn-playback-pill:active {
+      transform: scale(0.97);
+    }
+
+    .btn-playback-pill.is-stopped {
+      background-color: var(--bg-dominant);
+      color: var(--ink-primary);
+    }
+
+    .btn-playback-pill.is-stopped:hover {
+      background-color: #EFEFED;
+    }
+  </style>
+</head>
+<body>
+  <!-- =======================================================================
+       1. MAIN SCREEN — 100DVH FULL-BLEED VIEWPORT (#F7F7F5)
+       ======================================================================= -->
+  <main class="viewport-canvas">
+    <!-- Subtle Centered Wireframe Indicator -->
+    <div class="viewport-wireframe" aria-live="polite">
+      <svg class="wireframe-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+        <polygon points="10 9 15 12 10 15 10 9"></polygon>
+      </svg>
+      <span class="wireframe-title">Live Wallpaper Viewport</span>
+      <div id="viewport-status-pill" class="viewport-status-pill">
+        <span class="status-dot"></span>
+        <span id="viewport-status-text">Belum ada video dipilih</span>
+      </div>
+    </div>
+
+    <!-- Floating Confirmation Pill Toast -->
+    <div id="toast-pill" class="toast-pill" role="status" aria-live="polite">
+      <span class="toast-dot"></span>
+      <span id="toast-label" class="toast-label">Wallpaper diterapkan</span>
+    </div>
+
+    <!-- =====================================================================
+         ONLY 2 FLOATING BOTTOM UI ELEMENTS
+         ===================================================================== -->
+    <nav id="floating-bottom-dock" class="floating-bottom-dock" aria-label="Kontrol Utama">
+      <!-- Element 1 (Left/Main): Pill-shaped primary CTA button 'Set Wallpaper' -->
+      <button id="btn-open-set" type="button" class="btn-primary-pill">
+        Set Wallpaper
+      </button>
+
+      <!-- Element 2 (Right): Circular glassmorphic 'Pengaturan' icon button (52px x 52px) -->
+      <button id="btn-open-settings" type="button" class="btn-settings-circle" aria-label="Pengaturan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- Backdrop Overlay -->
+    <div id="sheet-backdrop" class="sheet-backdrop"></div>
+
+    <!-- =====================================================================
+         2. BOTTOM SHEET 1 — 'SET WALLPAPER' (PROGRESSIVE DISCLOSURE FLOW)
+         ===================================================================== -->
+    <section id="sheet-set-wallpaper" class="bottom-sheet" aria-label="Set Wallpaper">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Set Wallpaper</h2>
+        <button id="btn-close-set" type="button" class="btn-sheet-close" aria-label="Tutup Set Wallpaper">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- STATE 1 (Initial — Before Video Setup): Only Gallery Selection Card -->
+      <div id="set-state-initial" class="flow-state-panel">
+        <button id="btn-pick-gallery" type="button" class="gallery-picker-card">
+          <span class="gallery-icon-box" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </span>
+          <span class="gallery-text-group">
+            <span class="gallery-primary-label">Pilih Video dari Galeri</span>
+            <span class="gallery-helper-caption">Format MP4, MOV, atau WebM</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- STATE 2 (After Video Setup): Summary Card + Target Screen Pills + Apply CTA -->
+      <div id="set-state-configured" class="flow-state-panel hidden">
+        <!-- Selected Video Summary Card -->
+        <div class="selected-video-card">
+          <div class="selected-video-info">
+            <span class="video-thumb-badge" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="3"></rect>
+                <polygon points="10 9 15 12 10 15 10 9"></polygon>
+              </svg>
+            </span>
+            <span class="video-filename">video_wallpaper.mp4</span>
+          </div>
+          <button id="btn-change-video" type="button" class="btn-change-video">
+            Ganti
+          </button>
+        </div>
+
+        <!-- Target Screen Section ('Terapkan ke') -->
+        <div class="target-section">
+          <span class="section-micro-label">Terapkan ke</span>
+          <div class="segmented-pill-row" role="group" aria-label="Terapkan ke">
+            <button type="button" data-target="Layar Utama" class="target-pill">Layar Utama</button>
+            <button type="button" data-target="Layar Kunci" class="target-pill">Layar Kunci</button>
+            <button type="button" data-target="Keduanya" class="target-pill active">Keduanya</button>
+          </div>
+        </div>
+
+        <!-- Full-Width Primary Pill Button -->
+        <button id="btn-apply-wallpaper" type="button" class="btn-apply-full">
+          Terapkan Wallpaper
+        </button>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         3. BOTTOM SHEET 2 — 'PENGATURAN' (STRICTLY 3 CONTROLS)
+         ===================================================================== -->
+    <section id="sheet-settings" class="bottom-sheet" aria-label="Pengaturan">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-header">
+        <h2 class="sheet-title">Pengaturan</h2>
+        <button id="btn-close-settings" type="button" class="btn-sheet-close" aria-label="Tutup Pengaturan">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-stack">
+        <!-- Control 1: Volume Video (0% - 100%, default 70%) -->
+        <div class="setting-card">
+          <div class="setting-row-top">
+            <label for="slider-volume" class="setting-label">
+              <svg id="icon-vol-active" class="setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+              <svg id="icon-vol-muted" class="setting-icon hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+              <span>Volume Video</span>
+            </label>
+            <span id="volume-value" class="setting-value">70%</span>
+          </div>
+          <input id="slider-volume" type="range" min="0" max="100" step="1" value="70" class="cobalt-slider" />
+        </div>
+
+        <!-- Control 2: Kecerahan Video (20% - 100%, default 100%) -->
+        <div class="setting-card">
+          <div class="setting-row-top">
+            <label for="slider-brightness" class="setting-label">
+              <svg class="setting-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"></circle>
+                <line x1="12" y1="2" x2="12" y2="4"></line>
+                <line x1="12" y1="20" x2="12" y2="22"></line>
+                <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"></line>
+                <line x1="17.66" y1="17.66" x2="19.07" y2="19.07"></line>
+                <line x1="2" y1="12" x2="4" y2="12"></line>
+                <line x1="20" y1="12" x2="22" y2="12"></line>
+                <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"></line>
+                <line x1="17.66" y1="6.34" x2="19.07" y2="4.93"></line>
+              </svg>
+              <span>Kecerahan Video</span>
+            </label>
+            <span id="brightness-value" class="setting-value">100%</span>
+          </div>
+          <input id="slider-brightness" type="range" min="20" max="100" step="1" value="100" class="cobalt-slider" />
+        </div>
+
+        <!-- Control 3: Stop Video Card Row -->
+        <div class="playback-card">
+          <div class="playback-meta">
+            <span class="playback-title">Status Pemutaran</span>
+            <span id="playback-badge" class="playback-badge">
+              <span class="playback-badge-dot"></span>
+              <span id="playback-badge-text">Berjalan</span>
+            </span>
+          </div>
+          <button id="btn-toggle-playback" type="button" class="btn-playback-pill">
+            Stop Video
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =======================================================================
+      // UI STATE CONTROLLER (Pure UI/UX State Transitions Only)
+      // =======================================================================
+      const state = {
+        activeSheet: null,          // null | 'set' | 'settings'
+        hasSelectedVideo: false,    // false -> State 1 | true -> State 2
+        selectedTarget: 'Keduanya', // 'Layar Utama' | 'Layar Kunci' | 'Keduanya'
+        volume: 70,                 // 0 - 100
+        brightness: 100,            // 20 - 100
+        isStopped: false            // false -> 'Berjalan' | true -> 'Berhenti'
+      };
+
+      // Viewport & Floating Dock Elements
+      const viewportStatusPill = document.getElementById('viewport-status-pill');
+      const viewportStatusText = document.getElementById('viewport-status-text');
+      const floatingBottomDock = document.getElementById('floating-bottom-dock');
+      const sheetBackdrop = document.getElementById('sheet-backdrop');
+
+      // Toast Elements
+      const toastPill = document.getElementById('toast-pill');
+      const toastLabel = document.getElementById('toast-label');
+
+      // Bottom Sheet 1 ('Set Wallpaper') Elements
+      const sheetSet = document.getElementById('sheet-set-wallpaper');
+      const btnOpenSet = document.getElementById('btn-open-set');
+      const btnCloseSet = document.getElementById('btn-close-set');
+      const setStateInitial = document.getElementById('set-state-initial');
+      const setStateConfigured = document.getElementById('set-state-configured');
+      const btnPickGallery = document.getElementById('btn-pick-gallery');
+      const btnChangeVideo = document.getElementById('btn-change-video');
+      const targetPills = document.querySelectorAll('.target-pill');
+      const btnApplyWallpaper = document.getElementById('btn-apply-wallpaper');
+
+      // Bottom Sheet 2 ('Pengaturan') Elements
+      const sheetSettings = document.getElementById('sheet-settings');
+      const btnOpenSettings = document.getElementById('btn-open-settings');
+      const btnCloseSettings = document.getElementById('btn-close-settings');
+
+      const sliderVolume = document.getElementById('slider-volume');
+      const volumeValue = document.getElementById('volume-value');
+      const iconVolActive = document.getElementById('icon-vol-active');
+      const iconVolMuted = document.getElementById('icon-vol-muted');
+
+      const sliderBrightness = document.getElementById('slider-brightness');
+      const brightnessValue = document.getElementById('brightness-value');
+
+      const playbackBadge = document.getElementById('playback-badge');
+      const playbackBadgeText = document.getElementById('playback-badge-text');
+      const btnTogglePlayback = document.getElementById('btn-toggle-playback');
+
+      // Open & Close Bottom Sheets
+      function openSheet(sheetKey) {
+        state.activeSheet = sheetKey;
+        floatingBottomDock.classList.add('is-hidden');
+        sheetBackdrop.classList.add('visible');
+        sheetSet.classList.toggle('open', sheetKey === 'set');
+        sheetSettings.classList.toggle('open', sheetKey === 'settings');
+      }
+
+      function closeSheets() {
+        state.activeSheet = null;
+        sheetSet.classList.remove('open');
+        sheetSettings.classList.remove('open');
+        sheetBackdrop.classList.remove('visible');
+        floatingBottomDock.classList.remove('is-hidden');
+      }
+
+      // Render Progressive Disclosure State (State 1 vs State 2) & Viewport Status
+      function renderVideoSetupState() {
+        const ready = state.hasSelectedVideo;
+
+        setStateInitial.classList.toggle('hidden', ready);
+        setStateConfigured.classList.toggle('hidden', !ready);
+
+        viewportStatusPill.classList.toggle('is-ready', ready);
+        viewportStatusText.textContent = ready
+          ? 'Video siap diterapkan'
+          : 'Belum ada video dipilih';
+      }
+
+      // Render Segmented Target Screen Pills
+      function renderTargetPills() {
+        targetPills.forEach(function (pill) {
+          pill.classList.toggle('active', pill.dataset.target === state.selectedTarget);
+        });
+      }
+
+      // Paint Cobalt Blue Progress Fill on Range Sliders
+      function paintSliderProgress(sliderEl) {
+        const min = Number(sliderEl.min) || 0;
+        const max = Number(sliderEl.max) || 100;
+        const val = Number(sliderEl.value) || 0;
+        const percent = ((val - min) / (max - min)) * 100;
+        sliderEl.style.background =
+          'linear-gradient(to right, #2563EB 0%, #2563EB ' + percent + '%, #D4D4CE ' + percent + '%, #D4D4CE 100%)';
+      }
+
+      function renderVolumeUI() {
+        volumeValue.textContent = state.volume + '%';
+        const isMuted = state.volume === 0;
+        iconVolActive.classList.toggle('hidden', isMuted);
+        iconVolMuted.classList.toggle('hidden', !isMuted);
+        paintSliderProgress(sliderVolume);
+      }
+
+      function renderBrightnessUI() {
+        brightnessValue.textContent = state.brightness + '%';
+        paintSliderProgress(sliderBrightness);
+      }
+
+      function renderPlaybackUI() {
+        playbackBadge.classList.toggle('is-stopped', state.isStopped);
+        playbackBadgeText.textContent = state.isStopped ? 'Berhenti' : 'Berjalan';
+        btnTogglePlayback.classList.toggle('is-stopped', state.isStopped);
+        btnTogglePlayback.textContent = state.isStopped ? 'Putar Video' : 'Stop Video';
+      }
+
+      let toastTimeout = null;
+      function showToast(message) {
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastLabel.textContent = message;
+        toastPill.classList.add('visible');
+        toastTimeout = setTimeout(function () {
+          toastPill.classList.remove('visible');
+        }, 2200);
+      }
+
+      // Event Listeners: Sheet Triggers & Backdrop
+      btnOpenSet.addEventListener('click', function () { openSheet('set'); });
+      btnOpenSettings.addEventListener('click', function () { openSheet('settings'); });
+      btnCloseSet.addEventListener('click', closeSheets);
+      btnCloseSettings.addEventListener('click', closeSheets);
+      sheetBackdrop.addEventListener('click', closeSheets);
+
+      // Event Listeners: Progressive Disclosure Flow inside 'Set Wallpaper'
+      btnPickGallery.addEventListener('click', function () {
+        state.hasSelectedVideo = true;
+        renderVideoSetupState();
+      });
+
+      btnChangeVideo.addEventListener('click', function () {
+        state.hasSelectedVideo = false;
+        renderVideoSetupState();
+      });
+
+      targetPills.forEach(function (pill) {
+        pill.addEventListener('click', function () {
+          state.selectedTarget = pill.dataset.target;
+          renderTargetPills();
+        });
+      });
+
+      btnApplyWallpaper.addEventListener('click', function () {
+        closeSheets();
+        renderVideoSetupState();
+        showToast('Wallpaper diterapkan');
+      });
+
+      // Event Listeners: 'Pengaturan' Controls
+      sliderVolume.addEventListener('input', function (e) {
+        state.volume = parseInt(e.target.value, 10);
+        renderVolumeUI();
+      });
+
+      sliderBrightness.addEventListener('input', function (e) {
+        state.brightness = parseInt(e.target.value, 10);
+        renderBrightnessUI();
+      });
+
+      btnTogglePlayback.addEventListener('click', function () {
+        state.isStopped = !state.isStopped;
+        renderPlaybackUI();
+      });
+
+      // Initialize UI States
+      renderVideoSetupState();
+      renderTargetPills();
+      renderVolumeUI();
+      renderBrightnessUI();
+      renderPlaybackUI();
+    })();
+  </script>
+</body>
+</html>
