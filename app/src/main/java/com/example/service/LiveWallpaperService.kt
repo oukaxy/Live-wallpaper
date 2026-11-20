@@ -2,10 +2,6 @@ package com.example.service
 
 import android.app.WallpaperColors
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Matrix
-import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Build
@@ -66,10 +62,12 @@ class LiveWallpaperService : WallpaperService() {
     private var trackSelector: DefaultTrackSelector? = null
     private var glRenderer: WallpaperGlRenderer? = null
     private var attachedPlayerSurface: Surface? = null
+    private var attachedDirectSurface: Surface? = null
     private var usingGlRenderer = false
     private var forceDirectSurface = false
 
     private var currentPrefs = WallpaperPreferences()
+    private var hasLoadedPreferences = false
     private var loadedVideoPath: String? = null
     private var loadedVideoVersion: Long = -1L
     private var isSurfaceReady = false
@@ -86,8 +84,6 @@ class LiveWallpaperService : WallpaperService() {
     private var decoderReleaseJob: Job? = null
     private var errorRecoveryJob: Job? = null
     private var playbackErrorAttempts = 0
-
-    private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 
     private val playerListener =
       object : Player.Listener {
@@ -112,7 +108,7 @@ class LiveWallpaperService : WallpaperService() {
           val wasUsingGl = usingGlRenderer
           releaseExoPlayer()
           releaseGlRenderer()
-          // Jika decoder/SurfaceTexture GL menolak video resolusi tinggi, otomatis fallback ke SurfaceHolder langsung
+          // Jika decoder/SurfaceTexture GL menolak video resolusi tinggi, otomatis fallback ke Surface langsung
           if (wasUsingGl) {
             forceDirectSurface = true
           }
@@ -133,7 +129,7 @@ class LiveWallpaperService : WallpaperService() {
                 }
               }
           } else {
-            // Hindari crash jika codec perangkat gagal permanen; tampilkan frame diam sebagai fallback aman
+            // Hindari crash jika codec perangkat gagal permanen; tampilkan frame diam via GL sebagai fallback aman
             drawStaticFrameIfPossible()
           }
         }
@@ -144,6 +140,7 @@ class LiveWallpaperService : WallpaperService() {
       surfaceHolder.setFormat(PixelFormat.RGBA_8888)
 
       engineScope.launch {
+        repository.ensureEmbeddedVideoLoaded()
         combine(
             repository.preferencesFlow,
             PlaybackCoordinator.isAppForeground,
@@ -151,6 +148,7 @@ class LiveWallpaperService : WallpaperService() {
             prefs to appForeground
           }
           .collect { (prefs, appForeground) ->
+            hasLoadedPreferences = true
             isAppForeground = appForeground
             applyPreferences(prefs)
           }
@@ -187,6 +185,7 @@ class LiveWallpaperService : WallpaperService() {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && cachedWallpaperColors != null) {
         notifyColorsChanged()
       }
+      if (!hasLoadedPreferences) return
       if (currentPrefs.isStopped || !currentPrefs.hasVideo) {
         drawStaticFrameIfPossible()
       } else {
@@ -199,10 +198,14 @@ class LiveWallpaperService : WallpaperService() {
       surfaceWidth = width
       surfaceHeight = height
 
-      if (width <= 1 || height <= 1) return
+      if (width <= 1 || height <= 1 || !hasLoadedPreferences) return
 
       if (currentPrefs.isStopped || !currentPrefs.hasVideo) {
-        drawStaticFrameIfPossible()
+        if (glRenderer != null) {
+          glRenderer?.updateSurfaceSize(holder.surface, width, height)
+        } else {
+          drawStaticFrameIfPossible()
+        }
       } else if (usingGlRenderer) {
         glRenderer?.updateSurfaceSize(holder.surface, width, height)
       } else {
@@ -227,7 +230,9 @@ class LiveWallpaperService : WallpaperService() {
             delay(1_500L)
             if (!isEngineVisible && !isVisible) {
               releaseExoPlayer()
-              releaseGlRenderer()
+              if (usingGlRenderer) {
+                releaseGlRenderer()
+              }
             }
           }
       }
@@ -282,6 +287,7 @@ class LiveWallpaperService : WallpaperService() {
         playbackErrorAttempts = 0
         forceDirectSurface = false
         errorRecoveryJob?.cancel()
+        stillLoadJob?.cancel()
         cachedStillBitmap?.recycle()
         cachedStillBitmap = null
         cachedStillVersion = -1L
@@ -297,9 +303,7 @@ class LiveWallpaperService : WallpaperService() {
         PlaybackCoordinator.syncAudioTrackState(trackSelector, prefs.volume)
       }
 
-      if (usingGlRenderer) {
-        glRenderer?.setBrightness(prefs.effectiveBrightness / 100f)
-      }
+      glRenderer?.setBrightness(prefs.effectiveBrightness / 100f)
 
       syncEngineState()
     }
@@ -331,13 +335,14 @@ class LiveWallpaperService : WallpaperService() {
     }
 
     private fun syncEngineState() {
-      if (!isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1) return
+      if (!hasLoadedPreferences || !isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1) {
+        return
+      }
 
       val videoPath = currentPrefs.videoPath
       val videoFile = videoPath?.let { File(it) }?.takeIf { it.exists() }
       if (videoFile == null) {
         releaseExoPlayer()
-        releaseGlRenderer()
         drawBlankDominantSurface()
         return
       }
@@ -356,21 +361,20 @@ class LiveWallpaperService : WallpaperService() {
         return
       }
 
-      // Mode Berhenti: 0% ExoPlayer / 0% MediaCodec — cukup render frame diam ke Canvas
+      // Mode Berhenti: 0% ExoPlayer / 0% MediaCodec — render frame diam via EGL agar Surface tetap bersih
       if (currentPrefs.isStopped) {
         releaseExoPlayer()
-        releaseGlRenderer()
         drawStaticFrameIfPossible()
         return
       }
 
       // Mode Berjalan: lepas decoder engine lain dulu agar video resolusi besar tidak berebut MediaCodec
       releaseOtherEngineDecoders(this)
-      val player = ensureExoPlayer(videoFile)
+      val player = ensureExoPlayer()
       player.volume = (currentPrefs.volume / 100f).coerceIn(0f, 1f)
       PlaybackCoordinator.syncAudioTrackState(trackSelector, currentPrefs.volume)
 
-      // Pada kecerahan 100%, render langsung ke SurfaceHolder tanpa lapisan GL agar video 4K/besar zero-copy
+      // Pada kecerahan 100%, render langsung ke Surface tanpa lapisan GL agar video 4K/besar zero-copy
       if (forceDirectSurface || currentPrefs.effectiveBrightness >= 100) {
         attachDirectSurfaceAndPlay(player, videoFile)
       } else {
@@ -378,13 +382,9 @@ class LiveWallpaperService : WallpaperService() {
       }
     }
 
-    private fun ensureExoPlayer(videoFile: File): ExoPlayer {
+    private fun ensureExoPlayer(): ExoPlayer {
       val existing = exoPlayer
       if (existing != null) {
-        if (existing.currentMediaItem == null || existing.playbackState == Player.STATE_IDLE) {
-          existing.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
-          existing.prepare()
-        }
         return existing
       }
 
@@ -394,8 +394,6 @@ class LiveWallpaperService : WallpaperService() {
           initialVolume = currentPrefs.volume,
         )
       newPlayer.addListener(playerListener)
-      newPlayer.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
-      newPlayer.prepare()
       exoPlayer = newPlayer
       trackSelector = newSelector
       return newPlayer
@@ -404,11 +402,17 @@ class LiveWallpaperService : WallpaperService() {
     private fun attachDirectSurfaceAndPlay(player: ExoPlayer, videoFile: File) {
       releaseGlRenderer()
       if (!isSurfaceReady) return
+      val windowSurface = surfaceHolder.surface
+      if (windowSurface == null || !windowSurface.isValid) return
+
+      if (attachedDirectSurface !== windowSurface) {
+        player.setVideoSurface(windowSurface)
+        attachedDirectSurface = windowSurface
+      }
       if (player.currentMediaItem == null || player.playbackState == Player.STATE_IDLE) {
         player.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
         player.prepare()
       }
-      player.setVideoSurfaceHolder(surfaceHolder)
       if ((isVisible || isEngineVisible) && !currentPrefs.isStopped) {
         player.play()
       }
@@ -416,18 +420,21 @@ class LiveWallpaperService : WallpaperService() {
 
     private fun ensureGlRendererAndAttach(player: ExoPlayer, videoFile: File) {
       if (glRenderer != null && usingGlRenderer) {
-        attachedPlayerSurface?.takeIf { it.isValid }?.let { player.setVideoSurface(it) }
-        if (player.playbackState == Player.STATE_IDLE) {
-          player.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
-          player.prepare()
-        }
-        if ((isVisible || isEngineVisible) && !currentPrefs.isStopped && !player.isPlaying) {
-          player.play()
+        attachedPlayerSurface?.takeIf { it.isValid }?.let { playerSurface ->
+          player.setVideoSurface(playerSurface)
+          if (player.currentMediaItem == null || player.playbackState == Player.STATE_IDLE) {
+            player.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
+            player.prepare()
+          }
+          if ((isVisible || isEngineVisible) && !currentPrefs.isStopped && !player.isPlaying) {
+            player.play()
+          }
         }
         return
       }
 
       releaseGlRenderer()
+      attachedDirectSurface = null
       player.clearVideoSurface()
       val holderSurface = surfaceHolder.surface
       if (holderSurface == null || !holderSurface.isValid) return
@@ -441,11 +448,16 @@ class LiveWallpaperService : WallpaperService() {
         height = surfaceHeight,
         initialBrightness = currentPrefs.effectiveBrightness / 100f,
         onPlayerSurfaceReady = { playerSurface ->
-          if (isSurfaceReady && usingGlRenderer) {
+          if (isSurfaceReady && usingGlRenderer && playerSurface.isValid) {
             attachedPlayerSurface = playerSurface
-            exoPlayer?.setVideoSurface(playerSurface)
+            val activePlayer = exoPlayer ?: return@initialize
+            activePlayer.setVideoSurface(playerSurface)
+            if (activePlayer.currentMediaItem == null || activePlayer.playbackState == Player.STATE_IDLE) {
+              activePlayer.setMediaItem(MediaItem.fromUri(Uri.fromFile(videoFile)))
+              activePlayer.prepare()
+            }
             if ((isVisible || isEngineVisible) && !currentPrefs.isStopped) {
-              exoPlayer?.play()
+              activePlayer.play()
             }
           }
         },
@@ -454,15 +466,16 @@ class LiveWallpaperService : WallpaperService() {
           usingGlRenderer = false
           attachedPlayerSurface = null
           releaseGlRenderer()
-          if (isSurfaceReady && (isVisible || isEngineVisible) && !currentPrefs.isStopped) {
-            exoPlayer?.setVideoSurfaceHolder(surfaceHolder)
-            exoPlayer?.play()
+          val activePlayer = exoPlayer
+          if (activePlayer != null && isSurfaceReady && (isVisible || isEngineVisible) && !currentPrefs.isStopped) {
+            attachDirectSurfaceAndPlay(activePlayer, videoFile)
           }
         },
       )
     }
 
     private fun releaseExoPlayer() {
+      attachedDirectSurface = null
       val player = exoPlayer ?: return
       exoPlayer = null
       trackSelector = null
@@ -482,7 +495,12 @@ class LiveWallpaperService : WallpaperService() {
     }
 
     private fun drawStaticFrameIfPossible() {
-      val videoPath = currentPrefs.videoPath ?: return
+      if (!isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1) return
+      val videoPath = currentPrefs.videoPath
+      if (videoPath.isNullOrBlank()) {
+        drawBlankDominantSurface()
+        return
+      }
       val file = File(videoPath)
       if (!file.exists()) {
         drawBlankDominantSurface()
@@ -491,7 +509,7 @@ class LiveWallpaperService : WallpaperService() {
 
       val existingBitmap = cachedStillBitmap
       if (existingBitmap != null && !existingBitmap.isRecycled && cachedStillVersion == currentPrefs.videoVersion) {
-        renderBitmapOnCanvas(existingBitmap, currentPrefs.effectiveBrightness)
+        renderBitmapViaGl(existingBitmap, currentPrefs.effectiveBrightness)
         return
       }
 
@@ -506,65 +524,45 @@ class LiveWallpaperService : WallpaperService() {
             cachedStillBitmap = frame
             cachedStillVersion = currentPrefs.videoVersion
             if (currentPrefs.isStopped || exoPlayer == null) {
-              renderBitmapOnCanvas(frame, currentPrefs.effectiveBrightness)
+              renderBitmapViaGl(frame, currentPrefs.effectiveBrightness)
             }
+          } else if (frame == null && isSurfaceReady && (currentPrefs.isStopped || exoPlayer == null)) {
+            drawBlankDominantSurface()
           }
         }
     }
 
-    private fun renderBitmapOnCanvas(bitmap: Bitmap, brightnessPercent: Int) {
-      if (!isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1) return
-      val holder = surfaceHolder
-      var canvas: Canvas? = null
-      try {
-        canvas = holder.lockCanvas()
-        if (canvas != null) {
-          canvas.drawColor(Color.BLACK)
-          val matrix = computeCenterCropMatrix(bitmap.width, bitmap.height, canvas.width, canvas.height)
-          canvas.drawBitmap(bitmap, matrix, bitmapPaint)
+    private fun renderBitmapViaGl(bitmap: Bitmap, brightnessPercent: Int) {
+      if (!isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1 || bitmap.isRecycled) return
+      val windowSurface = surfaceHolder.surface ?: return
+      if (!windowSurface.isValid) return
 
-          val dimAlpha = ((1f - (brightnessPercent.coerceIn(1, 100) / 100f)) * 255).toInt()
-          if (dimAlpha > 0) {
-            canvas.drawColor(Color.argb(dimAlpha, 0, 0, 0))
-          }
-        }
-      } catch (_: Throwable) {
-        // Abaikan jika Surface sudah terlepas
-      } finally {
-        if (canvas != null) {
-          runCatching { holder.unlockCanvasAndPost(canvas) }
-        }
-      }
+      usingGlRenderer = false
+      attachedPlayerSurface = null
+      val renderer = glRenderer ?: WallpaperGlRenderer().also { glRenderer = it }
+      renderer.renderStaticBitmap(
+        windowSurface = windowSurface,
+        width = surfaceWidth,
+        height = surfaceHeight,
+        bitmap = bitmap,
+        brightness = brightnessPercent.coerceIn(1, 100) / 100f,
+      )
     }
 
     private fun drawBlankDominantSurface() {
       if (!isSurfaceReady || surfaceWidth <= 1 || surfaceHeight <= 1) return
-      var canvas: Canvas? = null
-      try {
-        canvas = surfaceHolder.lockCanvas()
-        canvas?.drawColor(0xFFF7F7F5.toInt())
-      } catch (_: Throwable) {
-      } finally {
-        if (canvas != null) {
-          runCatching { surfaceHolder.unlockCanvasAndPost(canvas) }
-        }
-      }
-    }
+      val windowSurface = surfaceHolder.surface ?: return
+      if (!windowSurface.isValid) return
 
-    private fun computeCenterCropMatrix(
-      srcW: Int,
-      srcH: Int,
-      dstW: Int,
-      dstH: Int,
-    ): Matrix {
-      val matrix = Matrix()
-      if (srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0) return matrix
-      val scale = maxOf(dstW.toFloat() / srcW.toFloat(), dstH.toFloat() / srcH.toFloat())
-      val dx = (dstW - srcW * scale) * 0.5f
-      val dy = (dstH - srcH * scale) * 0.5f
-      matrix.setScale(scale, scale)
-      matrix.postTranslate(dx, dy)
-      return matrix
+      usingGlRenderer = false
+      attachedPlayerSurface = null
+      val renderer = glRenderer ?: WallpaperGlRenderer().also { glRenderer = it }
+      renderer.renderSolidColor(
+        windowSurface = windowSurface,
+        width = surfaceWidth,
+        height = surfaceHeight,
+        color = 0xFFF7F7F5.toInt(),
+      )
     }
   }
 }

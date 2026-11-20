@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name">Live Wallpaper</string>
+    <string name="wallpaper_description">Tampilkan video favorit dari galeri sebagai live wallpaper layar utama dan layar kunci.</string>
+
+    <string name="viewport_title">Live Wallpaper Viewport</string>
+    <string name="viewport_status_empty">Belum ada video dipilih</string>
+    <string name="viewport_status_ready">Video siap diterapkan</string>
+    <string name="cta_set_wallpaper">Set Wallpaper</string>
+    <string name="cd_settings">Pengaturan</string>
+    <string name="toast_wallpaper_applied">Wallpaper diterapkan</string>
+
+    <string name="sheet_set_wallpaper_title">Set Wallpaper</string>
+    <string name="cd_close_set_wallpaper">Tutup Set Wallpaper</string>
+    <string name="pick_video_gallery">Pilih Video dari Galeri</string>
+    <string name="pick_video_formats">Format MP4, MOV, atau WebM</string>
+    <string name="default_video_filename">video_wallpaper.mp4</string>
+    <string name="action_change_video">Ganti</string>
+    <string name="cta_apply_wallpaper">Terapkan Wallpaper</string>
+    <string name="copying_video">Menyiapkan video…</string>
+    <string name="error_copy_video">Gagal memuat video yang dipilih</string>
+    <string name="error_open_wallpaper_chooser">Gagal membuka pengaturan live wallpaper sistem</string>
+
+    <string name="sheet_settings_title">Pengaturan</string>
+    <string name="cd_close_settings">Tutup Panel Kontrol</string>
+    <string name="cd_brightness_control">Atur Kecerahan Video</string>
+    <string name="cd_volume_control">Atur Volume Video</string>
+    <string name="cd_toggle_playback">Putar atau Hentikan Video</string>
+    <string name="label_volume_video">Volume Video</string>
+    <string name="label_brightness_video">Kecerahan Video</string>
+    <string name="label_brightness_independent">Khusus</string>
+    <string name="label_brightness_global">Global</string>
+    <string name="cd_brightness_independent">Atur Kecerahan Khusus Wallpaper Ini</string>
+    <string name="cd_brightness_global">Atur Kecerahan Global Semua Wallpaper</string>
+    <string name="brightness_formula_summary">Khusus (%1$d%%) × Global (%2$d%%) = %3$d%%\nKhusus: hanya wallpaper ini\nGlobal: semua wallpaper</string>
+    <string name="label_playback_status">Status Pemutaran</string>
+    <string name="status_running">Berjalan</string>
+    <string name="status_stopped">Berhenti</string>
+    <string name="action_stop_video">Stop Video</string>
+    <string name="action_play_video">Putar Video</string>
+    <string name="control_center_slider_hint">Geser bilah di kanan • Ketuk layar untuk kembali</string>
+    <string name="control_center_muted_hint">Audio dibisukan • Geser ke atas untuk menyalakan</string>
+
+    <string name="export_apk_packaging">Mengemas arsip APK…</string>
+    <string name="export_apk_aligning">Menyelaraskan 4-byte APK…</string>
+    <string name="export_apk_signing">Menandatangani APK…</string>
+    <string name="export_apk_filename">LiveWallpaper.apk</string>
+    <string name="toast_apk_saved">APK berhasil disimpan</string>
+    <string name="error_export_apk">Gagal mengekspor APK</string>
+</resources>
